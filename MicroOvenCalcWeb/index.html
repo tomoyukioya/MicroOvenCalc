@@ -1,0 +1,259 @@
+﻿<!DOCTYPE html>
+
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>MicroOvenCalc</title>
+    <script type="text/javascript">
+        <!--
+        // 計算尺円のマージン
+        const margin = 20.0;
+
+        // 円の中心座標
+        function cx() { return margin + ro; }
+        function cy() { return margin + ro; }
+
+        // 外円半径
+        let ro = 300.0;
+
+        // 内円半径
+        function ri() { return ro / 200.0 * 130.0; }
+
+        // 長目盛り高さ
+        const hh = 40.0;
+
+        // 中目盛り高さ
+        const hm = 20.0;
+
+        // 短目盛り高さ
+        const hl = 10.0;
+
+        // 内円と外円の角度
+        let diff = 0.0;
+
+        let canvas;
+        let context;
+        function start() {
+            let message = document.getElementById('message');
+            canvas = document.getElementById('canvas');
+            if (canvas.getContext) {
+                // canvasサイズ指定
+                canvas.width = 2 * cx();
+                canvas.height = 2 * cy();
+                context = canvas.getContext('2d');
+
+                // 初期描画
+                paint();
+
+                // マウスイベント
+                canvas.addEventListener('mousedown', onDown, false);
+                canvas.addEventListener('mousemove', onMove, false);
+                canvas.addEventListener('mouseup', onUp, false);
+
+                // タッチイベント
+                canvas.addEventListener('touchstart', function (e) {
+                    e.preventDefault();
+                    onDown(e.targetTouches[0]);
+                }, false);
+                canvas.addEventListener('touchmove', function (e) {
+                    e.preventDefault();
+                    onMove(e.targetTouches[0]);
+                }, false);
+                canvas.addEventListener('touchend', function (e) {
+                    e.preventDefault();
+                    onUp(e.targetTouches[0]);
+                }, false);
+            }
+        }
+
+        // 計算尺描画
+        function paint() {
+            // 外円 分
+            context.strokeStyle = 'rgb(0,0,0)';
+            context.fillStyle = 'rgb(0,0,0)';
+            context.beginPath();
+            context.arc(cx(), cy(), ro, 0, Math.PI * 2);
+            context.stroke();
+            context.font = "20px serif";
+            for (let i = 6; i < 60; i++) {
+                let theta = Math.log10(i / 6.0) * 2 * Math.PI;
+                let len = hl;
+                if (i % 6 == 0) {
+                    // ラベル
+                    len = hm;
+                    DrawString(i / 6 + "分", theta, ri() + hm + 10, context);
+                }
+
+                // 目盛り線
+                context.beginPath();
+                context.moveTo(cx() + Math.sin(theta) * (ri() + len), cy() - Math.cos(theta) * (ri() + len));
+                context.lineTo(cx() + Math.sin(theta) * ri(), cy() - Math.cos(theta) * ri());
+                context.stroke();
+            }
+            DrawString("10分", 0, ri() + hh + 10);
+            DrawArcString("実際の温め時間", Math.log10(6) * 2 * Math.PI, ri() + hh + 10);
+
+            // 外円　Watt
+            context.strokeStyle = 'rgb(255,0,0)';
+            context.fillStyle = 'rgb(255,0,0)';
+            for (let watt = 400; watt <= 1200; watt += 100) {
+                if (watt == 1100) continue;
+                var theta = Math.log10(watt / 400.0 * 1.22) * 2 * Math.PI;
+                var len = hh;
+                switch (watt) {
+                    case 400:
+                    case 500:
+                    case 800:
+                    case 900:
+                    case 1200:
+                        len = hm;
+                        break;
+                }
+                DrawString(watt + "W", theta, ri() + len + 10);
+                context.beginPath();
+                context.moveTo(cx() + Math.sin(theta) * (ri() + len), cy() - Math.cos(theta) * (ri() + len));
+                context.lineTo(cx() + Math.sin(theta) * ri(), cy() - Math.cos(theta) * ri());
+                context.stroke();
+            }
+            DrawArcString("説明書ワット", Math.log10(1.3) * 2 * Math.PI, ri() + hh + 10);
+
+            // 内円
+            context.strokeStyle = 'rgb(0,0,0)';
+            context.fillStyle = 'rgb(0,0,0)';
+            for (let i = 6; i < 60; i++) {
+                let theta = Math.log10(i / 6.0) * 2 * Math.PI + diff;
+                let len = hl;
+                if (i % 6 == 0) {
+                    // 分ラベル
+                    len = hm;
+                    DrawString(i / 6 + "分", theta, ri() - hm - 10);
+                }
+
+                // 目盛り線
+                context.beginPath();
+                context.moveTo(cx() + Math.sin(theta) * (ri() - len), cy() - Math.cos(theta) * (ri() - len));
+                context.lineTo(cx() + Math.sin(theta) * ri(), cy() - Math.cos(theta) * ri());
+                context.stroke();
+            }
+            DrawString("10分", diff, ri() - hh - 10);
+            DrawArcString("説明書時間", Math.log10(6) * 2 * Math.PI + diff, ri() - hh - 10);
+
+            context.strokeStyle = 'rgb(0,0,0)';
+            context.fillStyle = 'rgb(0,0,0)';
+            context.beginPath();
+            context.arc(cx(), cy(), ri(), 0, Math.PI * 2);
+            context.stroke();
+
+            context.strokeStyle = 'rgb(255,0,0)';
+            context.fillStyle = 'rgb(255,0,0)';
+            for (let watt = 400; watt <= 800; watt += 100) {
+                let theta = Math.log10(watt / 400.0 * 1.22) * 2 * Math.PI + diff;
+                let len = hh;
+                switch (watt) {
+                    case 400:
+                    case 500:
+                    case 800:
+                        len = hm;
+                        break;
+                }
+                DrawString(watt + "W", theta, ri() - len - 10);
+                context.beginPath();
+                context.moveTo(cx() + Math.sin(theta) * (ri() - len), cy() - Math.cos(theta) * (ri() - len));
+                context.lineTo(cx() + Math.sin(theta) * ri(), cy() - Math.cos(theta) * ri());
+                context.stroke();
+            }
+            DrawArcString("電子レンジワット", Math.log10(1.7) * 2 * Math.PI + diff, ri() - hh - 30);
+
+            // 中心
+            context.strokeStyle = 'rgb(0,0,0)';
+            context.fillStyle = 'rgb(0,0,0)';
+            context.beginPath();
+            context.arc(cx(), cy(), 4, 0, Math.PI * 2);
+            context.stroke();
+        }
+
+        function DrawArcString(text, angle, radius) {
+            let sz = context.measureText(text);
+            let startAngle = angle - sz.width / 2.0 / radius;
+            for (let i = 0; i < text.length; i++) {
+                let ch = text.substring(i, i + 1);
+                let chsz = context.measureText(ch);
+                context.save();
+                context.translate(cx() + Math.sin(startAngle) * radius, cy() - Math.cos(startAngle) * radius);
+                context.rotate(startAngle);
+                context.fillText(ch, -chsz.width / 2.0, (chsz.actualBoundingBoxAscent + chsz.actualBoundingBoxDescent) / 2.0);
+                context.restore();
+                startAngle += chsz.width / radius;
+            }
+        }
+
+        function DrawString(text, angle, radius) {
+            let metrics = context.measureText(text);
+            context.save();
+            context.translate(cx() + Math.sin(angle) * radius, cy() - Math.cos(angle) * radius);
+            context.rotate(angle);
+            context.fillText(text, -metrics.width / 2.0, (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) / 2.0);
+            context.restore();
+        }
+
+        //
+        // マウスドラッグ
+        //
+        let dragX, dragY;
+        let dragging = false;
+
+        function onDown(e) {
+            // キャンバスの左上端の座標を取得
+            let offsetX = canvas.getBoundingClientRect().left;
+            let offsetY = canvas.getBoundingClientRect().top;
+
+            // マウスが押された座標を取得
+            dragX = e.clientX - offsetX;
+            dragY = e.clientY - offsetY;
+
+            // 内円の座標かどうかを判定
+            if ((cx() - dragX) * (cx() - dragX) + (cy() - dragY) * (cy() - dragY) < ri() * ri()) {
+                dragging = true; // ドラッグ開始
+            }
+        }
+
+        function onMove(e) {
+            // ドラッグが開始されていれば内円を回転させて再描画
+            if (dragging) {
+                // キャンバスの左上端の座標を取得
+                let offsetX = canvas.getBoundingClientRect().left;
+                let offsetY = canvas.getBoundingClientRect().top;
+
+                // マウスが移動した先の座標を取得
+                let x = e.clientX - offsetX;
+                let y = e.clientY - offsetY;
+
+                if ((cx() === x && cy() === y) || (cx() === dragX && cy() === dragY)) return;
+                let outerProduct = (dragX - cx()) * (y - cy()) - (x - cx()) * (dragY - cy());
+                let norm1 = Math.sqrt((dragX - cx()) * (dragX - cx()) + (dragY - cy()) * (dragY - cy()));
+                let norm2 = Math.sqrt((x - cx()) * (x - cx()) + (y - cy()) * (y - cy()));
+                theta = Math.asin(outerProduct / norm1 / norm2);
+
+                diff += theta;
+                dragX = x;
+                dragY = y;
+
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                paint();
+            }
+        }
+
+        function onUp(e) {
+            dragging = false; // ドラッグ終了
+        }
+
+        // -->
+    </script>
+</head>
+<body onload="start()">
+    <div id="message"></div>
+    <canvas id="canvas">
+        図形を表示するには、canvasタグをサポートしたブラウザが必要です。
+    </canvas>
+</body>
+</html>
