@@ -14,7 +14,7 @@
         function cy() { return margin + ro; }
 
         // 外円半径
-        let ro = 300.0;
+        let ro;
 
         // 内円半径
         function ri() { return ro / 200.0 * 130.0; }
@@ -37,7 +37,9 @@
             let message = document.getElementById('message');
             canvas = document.getElementById('canvas');
             if (canvas.getContext) {
-                // canvasサイズ指定
+                // canvasサイズ, 計算尺サイズ指定
+                let viewSz = Math.min(window.innerWidth, window.innerHeight)*0.9;
+                ro = (viewSz-2*margin)/2;
                 canvas.width = 2 * cx();
                 canvas.height = 2 * cy();
                 context = canvas.getContext('2d');
@@ -63,6 +65,9 @@
                     e.preventDefault();
                     onUp(e.targetTouches[0]);
                 }, false);
+
+                // リサイズ
+                window.addEventListener('resize', onResize);
             }
         }
 
@@ -245,6 +250,17 @@
 
         function onUp(e) {
             dragging = false; // ドラッグ終了
+        }
+
+        //
+        // リサイズ
+        //
+        function onResize() {
+            let viewSz = Math.min(window.innerWidth, window.innerHeight) * 0.9;
+            ro = (viewSz - 2 * margin) / 2;
+            canvas.width = 2 * cx();
+            canvas.height = 2 * cy();
+            paint();
         }
 
         // -->
